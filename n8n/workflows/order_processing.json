@@ -1,0 +1,128 @@
+{
+  "name": "Order Processing Pipeline",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "order-webhook",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+      "name": "Order Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "insert",
+        "table": "orders",
+        "columns": "order_number,store_id,platform_order_id,customer_email,total_amount,status,order_date",
+        "options": {}
+      },
+      "id": "b2c3d4e5-f6a7-8901-bcde-f23456789012",
+      "name": "Save Order",
+      "type": "n8n-nodes-base.sqlite",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://ollama:11434/api/generate",
+        "authentication": "none",
+        "requestMethod": "POST",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"model\":\"llama3.2:3b\",\"prompt\":\"Analyze order {{$json.order_number}} and determine best supplier between Amazon, CJ, Eprolo based on: product={{$json.product}}, quantity={{$json.quantity}}, shipping_address={{$json.shipping.country}}. Return JSON: {supplier: 'name', reason: 'explanation', estimated_cost: number, shipping_days: number}\",\"stream\":false}",
+        "options": {}
+      },
+      "id": "c3d4e5f6-a7b8-9012-cdef-345678901234",
+      "name": "AI Supplier Selection",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "const response = JSON.parse($json.response);\nreturn {\n  supplier: response.supplier,\n  reason: response.reason,\n  estimated_cost: response.estimated_cost,\n  shipping_days: response.shipping_days\n};"
+      },
+      "id": "d4e5f6a7-b8c9-0123-defa-456789012345",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json.supplier}}",
+              "operation": "equals",
+              "value2": "amazon"
+            },
+            {
+              "value1": "={{$json.supplier}}",
+              "operation": "equals", 
+              "value2": "cj"
+            },
+            {
+              "value1": "={{$json.supplier}}",
+              "operation": "equals",
+              "value2": "eprolo"
+            }
+          ]
+        }
+      },
+      "id": "e5f6a7b8-c9d0-1234-efab-567890123456",
+      "name": "Supplier Router",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "orders",
+        "updateKey": "order_number",
+        "columns": "supplier_order_id,status,updated_at",
+        "options": {}
+      },
+      "id": "f6a7b8c9-d0e1-2345-fabc-678901234567",
+      "name": "Update Order Status",
+      "type": "n8n-nodes-base.sqlite",
+      "typeVersion": 1,
+      "position": [1450, 300]
+    }
+  ],
+  "connections": {
+    "Order Webhook": {
+      "main": [[{"node": "Save Order", "type": "main", "index": 0}]]
+    },
+    "Save Order": {
+      "main": [[{"node": "AI Supplier Selection", "type": "main", "index": 0}]]
+    },
+    "AI Supplier Selection": {
+      "main": [[{"node": "Parse AI Response", "type": "main", "index": 0}]]
+    },
+    "Parse AI Response": {
+      "main": [[{"node": "Supplier Router", "type": "main", "index": 0}]]
+    },
+    "Supplier Router": {
+      "main": [
+        [{"node": "Process Amazon Order", "type": "main", "index": 0}],
+        [{"node": "Process CJ Order", "type": "main", "index": 0}],
+        [{"node": "Process Eprolo Order", "type": "main", "index": 0}]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "id": "2",
+  "meta": {
+    "instanceId": "dropush-local"
+  },
+  "tags": []
+}

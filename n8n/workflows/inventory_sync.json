@@ -1,0 +1,141 @@
+{
+  "name": "Inventory Sync Manager",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{"minutes": 30}]
+        }
+      },
+      "id": "a1a2a3a4-b5b6-c7c8-d9d0-e1e2e3e4e5e6",
+      "name": "Sync Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [250, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM products WHERE is_active = 1",
+        "options": {}
+      },
+      "id": "b1b2b3b4-c5c6-d7d8-e9e0-f1f2f3f4f5f6",
+      "name": "Get Active Products",
+      "type": "n8n-nodes-base.sqlite",
+      "typeVersion": 1,
+      "position": [450, 300]
+    },
+    {
+      "parameters": {
+        "batchSize": 10,
+        "options": {}
+      },
+      "id": "c1c2c3c4-d5d6-e7e8-f9f0-a1a2a3a4a5a6",
+      "name": "Batch Products",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 1,
+      "position": [650, 300]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.supplier_api_endpoint}}/products/{{$json.supplier_sku}}/inventory",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "oAuth2Api",
+        "options": {
+          "timeout": 5000
+        }
+      },
+      "id": "d1d2d3d4-e5e6-f7f8-a9a0-b1b2b3b4b5b6",
+      "name": "Check Supplier Stock",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [850, 300]
+    },
+    {
+      "parameters": {
+        "mode": "expression",
+        "value1": "={{$json.available_quantity}}",
+        "value2": "={{$json.current_stock}}",
+        "options": {}
+      },
+      "id": "e1e2e3e4-f5f6-a7a8-b9b0-c1c2c3c4c5c6",
+      "name": "Compare Stock Levels",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1050, 300]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "table": "products",
+        "updateKey": "id",
+        "columns": "current_stock,updated_at",
+        "options": {}
+      },
+      "id": "f1f2f3f4-a5a6-b7b8-c9c0-d1d2d3d4d5d6",
+      "name": "Update Product Stock",
+      "type": "n8n-nodes-base.sqlite",
+      "typeVersion": 1,
+      "position": [1250, 250]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE listings SET quantity = {{$json.available_quantity}}, last_sync = datetime('now') WHERE product_id = {{$json.id}}",
+        "options": {}
+      },
+      "id": "a2a3a4a5-b6b7-c8c9-d0d1-e2e3e4e5e6e7",
+      "name": "Update Listing Quantity",
+      "type": "n8n-nodes-base.sqlite",
+      "typeVersion": 1,
+      "position": [1450, 250]
+    },
+    {
+      "parameters": {
+        "level": "info",
+        "message": "Inventory sync completed",
+        "module": "inventory_sync",
+        "details": "={{JSON.stringify({products_checked: $items().length, products_updated: $items('Update Product Stock').length})}}"
+      },
+      "id": "b2b3b4b5-c6c7-d8d9-e0e1-f2f3f4f5f6f7",
+      "name": "Log Sync Results",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1650, 300]
+    }
+  ],
+  "connections": {
+    "Sync Schedule": {
+      "main": [[{"node": "Get Active Products", "type": "main", "index": 0}]]
+    },
+    "Get Active Products": {
+      "main": [[{"node": "Batch Products", "type": "main", "index": 0}]]
+    },
+    "Batch Products": {
+      "main": [[{"node": "Check Supplier Stock", "type": "main", "index": 0}]]
+    },
+    "Check Supplier Stock": {
+      "main": [[{"node": "Compare Stock Levels", "type": "main", "index": 0}]]
+    },
+    "Compare Stock Levels": {
+      "main": [
+        [{"node": "Update Product Stock", "type": "main", "index": 0}],
+        [{"node": "Log Sync Results", "type": "main", "index": 0}]
+      ]
+    },
+    "Update Product Stock": {
+      "main": [[{"node": "Update Listing Quantity", "type": "main", "index": 0}]]
+    },
+    "Update Listing Quantity": {
+      "main": [[{"node": "Log Sync Results", "type": "main", "index": 0}]]
+    }
+  },
+  "active": true,
+  "settings": {},
+  "versionId": "1",
+  "id": "3",
+  "meta": {
+    "instanceId": "dropush-local"
+  },
+  "tags": []
+}
