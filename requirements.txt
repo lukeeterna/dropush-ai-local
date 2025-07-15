@@ -1,0 +1,55 @@
+# Python dependencies per Dropush AI Local
+# Aggiornare ogni volta che si aggiunge una libreria
+
+# Testing
+pytest==7.4.3
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# Database
+sqlite3  # Built-in Python
+
+# API Clients
+requests==2.31.0
+httpx==0.25.2
+
+# Environment
+python-dotenv==1.0.0
+
+# Data Processing
+pandas==2.1.4
+numpy==1.26.2
+
+# Parsing
+pyyaml==6.0.1
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Async
+aiohttp==3.9.1
+asyncio  # Built-in Python
+
+# Utilities
+click==8.1.7
+rich==13.7.0
+tqdm==4.66.1
+
+# Monitoring
+psutil==5.9.6
+
+# Date/Time
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Validation
+pydantic==2.5.2
+marshmallow==3.20.1
+
+# eBay SDK (se disponibile)
+# ebaysdk==2.2.0
+
+# Amazon SP-API
+# python-amazon-sp-api==1.0.0
+
+# Logging
+loguru==0.7.2
