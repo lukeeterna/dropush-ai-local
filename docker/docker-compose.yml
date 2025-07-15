@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: dropush-n8n
+    restart: unless-stopped
+    ports:
+      - "5678:5678"
+    environment:
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=${N8N_USER}
+      - N8N_BASIC_AUTH_PASSWORD=${N8N_PASSWORD}
+      - N8N_ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - DB_TYPE=sqlite
+      - DB_SQLITE_DATABASE=/data/database.sqlite
+      - N8N_USER_FOLDER=/home/node/.n8n
+      - N8N_WEBHOOK_URL=${WEBHOOK_URL}
+      - GENERIC_TIMEZONE=Europe/Rome
+      - N8N_METRICS=true
+      - N8N_METRICS_PREFIX=dropush_
+      - N8N_LOG_LEVEL=info
+      - N8N_LOG_OUTPUT=console,file
+      - N8N_LOG_FILE_LOCATION=/data/logs/
+    volumes:
+      - ../n8n:/home/node/.n8n
+      - ../data:/data
+    networks:
+      - dropush-network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    mem_limit: 4g
+    cpus: 2
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: dropush-ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ../ollama:/root/.ollama
+    networks:
+      - dropush-network
+    environment:
+      - OLLAMA_MODELS=/root/.ollama/models
+      - OLLAMA_HOST=0.0.0.0
+    mem_limit: 8g
+    cpus: 2
+
+  nginx:
+    image: nginx:alpine
+    container_name: dropush-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ../data/files:/usr/share/nginx/html:ro
+      - ../logs/nginx:/var/log/nginx
+    networks:
+      - dropush-network
+    depends_on:
+      - n8n
+
+networks:
+  dropush-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  n8n_data:
+  ollama_data:
